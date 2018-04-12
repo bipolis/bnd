@@ -45,17 +45,17 @@ public class SubsystemTest extends TestCase {
 	private static final String	WS_PATH								= "test-ws/";
 	private static final String	EXPORT_PRJ_FLD_SEG					= "proj_export";
 	private static final String	EXPORT_PATH							= WS_PATH + EXPORT_PRJ_FLD_SEG + "/";
-	private static final String	bndRunSubSystemDefaults				= "SubSystemDefaults.bndrun";
-	private static final String	bndRunSubSystemOverride				= "SubSystemOverride.bndrun";
+	private static final String	bndRunSubSystemDefaults				= "SubSystemDefaults";
+	private static final String	bndRunSubSystemOverride				= "SubSystemOverride";
 
-	private static final String	bndRunSubSystemEasArchivTypeNone	= "SubSystemTypeNone.bndrun";
-	private static final String	bndRunSubSystemEasArchivTypeContent	= "SubSystemTypeContent.bndrun";
-	private static final String	bndRunSubSystemEasArchivTypeAll		= "SubSystemTypeAll.bndrun";
+	private static final String	bndRunSubSystemEasArchivTypeNone	= "SubSystemTypeNone";
+	private static final String	bndRunSubSystemEasArchivTypeContent	= "SubSystemTypeContent";
+	private static final String	bndRunSubSystemEasArchivTypeAll		= "SubSystemTypeAll";
 
 	@Test
 	public void testSubSystemDefaults() throws Exception {
 		Jar jar = createExportEntry(bndRunSubSystemDefaults, SubsystemConstants.SUBSYSTEM_TYPE_FEATURE);
-		check(jar, EXPORT_PRJ_FLD_SEG, SubsystemConstants.SUBSYSTEM_TYPE_FEATURE, "0.0.0",
+		check(jar, bndRunSubSystemDefaults.replace(".bndrun", ""), SubsystemConstants.SUBSYSTEM_TYPE_FEATURE, "0.0.0",
 			Arrays.asList(proj_bundle_1jar));
 	}
 
@@ -63,28 +63,29 @@ public class SubsystemTest extends TestCase {
 	public void testSubSystemOverride() throws Exception {
 
 		Jar jar = createExportEntry(bndRunSubSystemOverride, SubsystemConstants.SUBSYSTEM_TYPE_APPLICATION);
-		check(jar, EXPORT_PRJ_FLD_SEG, SubsystemConstants.SUBSYSTEM_TYPE_APPLICATION, "0.0.1",
+		check(jar, bndRunSubSystemOverride, SubsystemConstants.SUBSYSTEM_TYPE_APPLICATION, "0.0.1",
 			Arrays.asList(proj_bundle_1jar));
 	}
 
 	@Test
 	public void testSubSystemArchiveTypeAll() throws Exception {
 		Jar jar = createExportEntry(bndRunSubSystemEasArchivTypeAll, SubsystemConstants.SUBSYSTEM_TYPE_FEATURE);
-		check(jar, EXPORT_PRJ_FLD_SEG, SubsystemConstants.SUBSYSTEM_TYPE_FEATURE, "0.0.0",
+		check(jar, bndRunSubSystemEasArchivTypeAll, SubsystemConstants.SUBSYSTEM_TYPE_FEATURE, "0.0.0",
 			Arrays.asList(proj_bundle_1jar, proj_bundle_2jar));
 	}
 
 	@Test
 	public void testSubSystemArchiveTypeContent() throws Exception {
 		Jar jar = createExportEntry(bndRunSubSystemEasArchivTypeContent, SubsystemConstants.SUBSYSTEM_TYPE_FEATURE);
-		check(jar, EXPORT_PRJ_FLD_SEG, SubsystemConstants.SUBSYSTEM_TYPE_FEATURE, "0.0.0",
+		check(jar, bndRunSubSystemEasArchivTypeContent, SubsystemConstants.SUBSYSTEM_TYPE_FEATURE, "0.0.0",
 			Arrays.asList(proj_bundle_1jar));
 	}
 
 	@Test
 	public void testSubSystemArchiveTypeNone() throws Exception {
 		Jar jar = createExportEntry(bndRunSubSystemEasArchivTypeNone, SubsystemConstants.SUBSYSTEM_TYPE_FEATURE);
-		check(jar, EXPORT_PRJ_FLD_SEG, SubsystemConstants.SUBSYSTEM_TYPE_FEATURE, "0.0.0", Arrays.asList());
+		check(jar, bndRunSubSystemEasArchivTypeNone, SubsystemConstants.SUBSYSTEM_TYPE_FEATURE, "0.0.0",
+			Arrays.asList());
 	}
 
 	private void check(Jar jar, String ssn, String ssType, String version, List<String> embeddesFileNames)
@@ -100,8 +101,6 @@ public class SubsystemTest extends TestCase {
 		assertTrue(subsystemMF.contains(SubsystemConstants.SUBSYSTEM_VERSION + ": " + version));
 
 		int subsystemFilesMF = 1;
-		// assertEquals(jar.getResources()
-		// .size(), embeddesFileNames.size() + subsystemFilesMF);
 
 		for (String filename : embeddesFileNames) {
 			assertNotNull(jar.getResource(filename));
@@ -131,7 +130,7 @@ public class SubsystemTest extends TestCase {
 		File subsysesa = new File(subsysoutput, subsysEas.getKey());
 		subsysjar.write(subsysesa.getAbsolutePath());
 
-		File f = IO.getFile(EXPORT_PATH + bndrun);
+		File f = IO.getFile(EXPORT_PATH + bndrun + ".bndrun");
 
 		assertNotNull(f);
 		assertTrue(f.isFile());
@@ -139,7 +138,7 @@ public class SubsystemTest extends TestCase {
 		Run run = Run.createRun(ws, f);
 
 		assertNotNull(run);
-		assertEquals(run.getName(), bndrun);
+		assertEquals(run.getName(), bndrun + ".bndrun");
 
 		Map.Entry<String, Resource> export = run.export(exportType, null);
 

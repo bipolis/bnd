@@ -6,6 +6,7 @@ import java.io.File;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -39,6 +40,18 @@ import aQute.lib.io.IO;
 @BndPlugin(name = "subsystem")
 public class SubsystemExporter implements Exporter {
 
+	String CONSTANT_MANIFEST_VERSION = "Manifest-Version";
+
+	Map<String, String> getDefaultsMap() {
+
+		Map<String, String> defaultsMap = new HashMap<>();
+		defaultsMap.put(SubsystemConstants.SUBSYSTEM_TYPE, SubsystemConstants.SUBSYSTEM_TYPE_FEATURE);
+		defaultsMap.put(SubsystemConstants.SUBSYSTEM_VERSION, "0.0.0");
+		defaultsMap.put(SubsystemConstants.SUBSYSTEM_MANIFESTVERSION, "1");
+		defaultsMap.put(CONSTANT_MANIFEST_VERSION, "1.0");
+		return defaultsMap;
+	}
+
 	@Override
 	public String[] getTypes() {
 		return new String[] {
@@ -55,15 +68,9 @@ public class SubsystemExporter implements Exporter {
 
 		project.addClose(jar);
 
-		Manifest manifest = new Manifest();
-		manifest.getMainAttributes()
-			.putValue("Manifest-Version", "1.0");
-		manifest.getMainAttributes()
-			.putValue("Subsystem-ManifestVersion", "1");
-
 		EasArchivType esaArchivType = null;
 		Boolean storeBundles = null;
-		String archiveContent = project.get("Subsystem-ArchiveContent");
+		String archiveContent = project.get("-archiveContentType");
 
 		esaArchivType = EasArchivType.byParameter(archiveContent);
 		if (esaArchivType == null) {
@@ -158,50 +165,61 @@ public class SubsystemExporter implements Exporter {
 			}
 		}
 
+		Manifest manifest = new Manifest();
 		// as overriding parameter from bndrun or bnd.bnd
+		// set imports exports requireCapability and provideCapability from
+		// embedded bundles
 		Parameters requirementParameter = project.getRequireCapability();
-		Parameters capabilityParameter = project.getProvideCapability();
-
 		if (requirementParameter != null && !requirementParameter.isEmpty()) {
 			requireCapability.clear();
 			for (Entry<String, Attrs> e : requirementParameter.entrySet()) {
 				requireCapability.add(e.getKey(), e.getValue());
 			}
 		}
+		set(manifest.getMainAttributes(), org.osgi.framework.Constants.REQUIRE_CAPABILITY, requireCapability);
 
+		Parameters capabilityParameter = project.getProvideCapability();
 		if (capabilityParameter != null && !capabilityParameter.isEmpty()) {
 			provideCapability.clear();
 			for (Entry<String, Attrs> e : capabilityParameter.entrySet()) {
 				provideCapability.add(e.getKey(), e.getValue());
 			}
 		}
-		headers(project, manifest.getMainAttributes());
-
-		set(manifest.getMainAttributes(), org.osgi.framework.Constants.REQUIRE_CAPABILITY, requireCapability);
 		set(manifest.getMainAttributes(), org.osgi.framework.Constants.PROVIDE_CAPABILITY, provideCapability);
-		set(manifest.getMainAttributes(), org.osgi.framework.Constants.IMPORT_PACKAGE, imports);
-		set(manifest.getMainAttributes(), org.osgi.framework.Constants.EXPORT_PACKAGE, exports);
-		set(manifest.getMainAttributes(), SubsystemConstants.SUBSYSTEM_VERSION,
-			project.get(SubsystemConstants.SUBSYSTEM_VERSION, "0.0.0"));
 
-		set(manifest.getMainAttributes(), SubsystemConstants.SUBSYSTEM_TYPE, type);
+		Parameters importParameter = project.getImportPackage();
+		if (importParameter != null && !importParameter.isEmpty()) {
+			if (type.equals(SubsystemConstants.SUBSYSTEM_TYPE_FEATURE)) {
 
-		String ssn = project.getName();
-
-		Collection<String> bsns = project.getBsns();
-		if (bsns.size() > 0) {
-			ssn = bsns.iterator()
-				.next();
+				throw new Exception("Modifying imports by using headers is not allowed for features");
+			}
+		} else {
+			set(manifest.getMainAttributes(), org.osgi.framework.Constants.IMPORT_PACKAGE, imports);
 		}
-		set(manifest.getMainAttributes(), SubsystemConstants.SUBSYSTEM_SYMBOLICNAME, ssn);
+
+		Parameters exportParameter = project.getExportPackage();
+		if (exportParameter != null && !exportParameter.isEmpty()) {} else {
+
+			set(manifest.getMainAttributes(), org.osgi.framework.Constants.EXPORT_PACKAGE, exports);
+		}
+
+		// set headers from bndrun if not set
+		headers(manifest.getMainAttributes(), project);
+
+		// set default headers if not set
+		for (Entry<String, String> entry : getDefaultsMap().entrySet()) {
+			set(manifest.getMainAttributes(), entry.getKey(), entry.getValue());
+		}
+
+		set(manifest.getMainAttributes(), SubsystemConstants.SUBSYSTEM_SYMBOLICNAME, project.getName()
+			.replace(".bndrun", ""));
 
 		ByteBufferOutputStream bout = new ByteBufferOutputStream();
 		manifest.write(bout);
-
 		jar.putResource(ContainerType.SUBSYSTEM.getManifestUri(), new EmbeddedResource(bout.toByteBuffer(), 0));
 
 		final JarResource jarResource = new JarResource(jar, true);
-		final String name = ssn + ".esa";
+		final String name = project.getName() + ".esa";
 
 		return new SimpleEntry<>(name, jarResource);
 	}
@@ -229,10 +247,6 @@ public class SubsystemExporter implements Exporter {
 		for (Attrs attrs2 : attrs) {
 			value += attrs2.get("id");
 		}
-
-		// project.getBundles(Strategy.LOWEST,
-		// project.getProperty(Constants.RUNREQUIRES), Constants.RUNREQUIRES);
-
 		List<Container> containers = project.getBundles(Strategy.HIGHEST, value, Constants.RUNREQUIRES);
 		return containers;
 	}
@@ -259,13 +273,15 @@ public class SubsystemExporter implements Exporter {
 		return files;
 	}
 
-	private void headers(final Project project, Attributes application) {
+	// puts all properties with a HEADER_PATTERN from the bndrun to the
+	// Attributes, if it is neccesary
+	private void headers(Attributes mainAttributes, final Project project) {
 		for (String key : project.getPropertyKeys(true)) {
 			if (!Verifier.HEADER_PATTERN.matcher(key)
 				.matches())
 				continue;
 
-			if (application.getValue(key) != null)
+			if (mainAttributes.getValue(key) != null)
 				continue;
 
 			String value = project.getProperty(key);
@@ -276,23 +292,24 @@ public class SubsystemExporter implements Exporter {
 			if (value.isEmpty() || Constants.EMPTY_HEADER.equals(value))
 				continue;
 
-			char c = value.charAt(0);
+			char c = key.charAt(0);
 			if (Character.isUpperCase(c))
-				application.putValue(key, value);
+				mainAttributes.putValue(key, value);
 		}
 		Instructions instructions = new Instructions(project.mergeProperties(REMOVEHEADERS));
-		Collection<Object> result = instructions.select(application.keySet(), false);
-		application.keySet()
+		Collection<Object> result = instructions.select(mainAttributes.keySet(), false);
+		mainAttributes.keySet()
 			.removeAll(result);
 	}
 
-	private void set(Attributes application, String key, String... values) {
-		if (application.getValue(key) != null)
+	// puts the values to the attributes if no other value is set by this key
+	private void set(Attributes mainAttributes, String key, String... values) {
+		if (mainAttributes.getValue(key) != null)
 			return;
 
 		for (String value : values) {
 			if (value != null) {
-				application.putValue(key, value);
+				mainAttributes.putValue(key, value);
 				return;
 			}
 		}
