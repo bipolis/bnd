@@ -55,7 +55,7 @@ public class SubsystemTest extends TestCase {
 	@Test
 	public void testSubSystemDefaults() throws Exception {
 		Jar jar = createExportEntry(bndRunSubSystemDefaults, SubsystemConstants.SUBSYSTEM_TYPE_FEATURE);
-		check(jar, bndRunSubSystemDefaults.replace(".bndrun", ""), SubsystemConstants.SUBSYSTEM_TYPE_FEATURE, "0.0.0",
+		check(jar, bndRunSubSystemDefaults, SubsystemConstants.SUBSYSTEM_TYPE_FEATURE, "0.0.0",
 			Arrays.asList(proj_bundle_1jar));
 	}
 

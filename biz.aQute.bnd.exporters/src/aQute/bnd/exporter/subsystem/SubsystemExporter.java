@@ -170,39 +170,51 @@ public class SubsystemExporter implements Exporter {
 		// require capability
 		MultiMap<String, Attrs> requireCapability = new MultiMap<>();
 		Parameters requirementParameter = project.getRequireCapability();
-		for (Entry<String, Attrs> e : requirementParameter.entrySet()) {
-			requireCapability.add(e.getKey(), e.getValue());
-		}
-		set(manifest.getMainAttributes(), org.osgi.framework.Constants.REQUIRE_CAPABILITY, requireCapability);
 
+		if (requirementParameter != null && !requirementParameter.entrySet()
+			.isEmpty()) {
+			for (Entry<String, Attrs> e : requirementParameter.entrySet()) {
+				requireCapability.add(e.getKey(), e.getValue());
+			}
+			set(manifest.getMainAttributes(), org.osgi.framework.Constants.REQUIRE_CAPABILITY, requireCapability);
+		}
 		// provide capability
 		MultiMap<String, Attrs> provideCapability = new MultiMap<>();
 		Parameters capabilityParameter = project.getProvideCapability();
-		for (Entry<String, Attrs> e : capabilityParameter.entrySet()) {
-			provideCapability.add(e.getKey(), e.getValue());
+		if (provideCapability != null && !provideCapability.entrySet()
+			.isEmpty()) {
+			for (Entry<String, Attrs> e : capabilityParameter.entrySet()) {
+				provideCapability.add(e.getKey(), e.getValue());
+			}
+			set(manifest.getMainAttributes(), org.osgi.framework.Constants.PROVIDE_CAPABILITY, provideCapability);
 		}
-		set(manifest.getMainAttributes(), org.osgi.framework.Constants.PROVIDE_CAPABILITY, provideCapability);
-
 		// imports
 		MultiMap<String, Attrs> imports = new MultiMap<>();
 		Parameters importParameter = project.getImportPackage();
-		if (type.equals(SubsystemConstants.SUBSYSTEM_TYPE_FEATURE)) {
-			throw new Exception("Modifying imports by using headers is not allowed for features");
-		} else {
-			for (Entry<String, Attrs> e : importParameter.entrySet()) {
-				imports.add(e.getKey(), e.getValue());
+
+		if (importParameter != null && !importParameter.entrySet()
+			.isEmpty()) {
+			if (type.equals(SubsystemConstants.SUBSYSTEM_TYPE_FEATURE)) {
+				throw new Exception("Modifying imports by using headers is not allowed for features");
+			} else {
+
+				for (Entry<String, Attrs> e : importParameter.entrySet()) {
+					imports.add(e.getKey(), e.getValue());
+				}
+				set(manifest.getMainAttributes(), org.osgi.framework.Constants.IMPORT_PACKAGE, imports);
 			}
-			set(manifest.getMainAttributes(), org.osgi.framework.Constants.IMPORT_PACKAGE, imports);
 		}
 
 		// exports
 		MultiMap<String, Attrs> exports = new MultiMap<>();
 		Parameters exportParameter = project.getExportPackage();
-		for (Entry<String, Attrs> e : exportParameter.entrySet()) {
-			exports.add(e.getKey(), e.getValue());
+		if (exportParameter != null && !exportParameter.entrySet()
+			.isEmpty()) {
+			for (Entry<String, Attrs> e : exportParameter.entrySet()) {
+				exports.add(e.getKey(), e.getValue());
+			}
+			set(manifest.getMainAttributes(), org.osgi.framework.Constants.EXPORT_PACKAGE, exports);
 		}
-		set(manifest.getMainAttributes(), org.osgi.framework.Constants.EXPORT_PACKAGE, exports);
-
 		// set headers from bndrun if not set
 		headers(manifest.getMainAttributes(), project);
 
@@ -219,7 +231,9 @@ public class SubsystemExporter implements Exporter {
 		jar.putResource(ContainerType.SUBSYSTEM.getManifestUri(), new EmbeddedResource(bout.toByteBuffer(), 0));
 
 		final JarResource jarResource = new JarResource(jar, true);
-		final String name = project.getName() + ".esa";
+		String name = project.getName();
+
+		name = name.substring(0, name.lastIndexOf(".bndrun")) + ".esa";
 
 		return new SimpleEntry<>(name, jarResource);
 	}
