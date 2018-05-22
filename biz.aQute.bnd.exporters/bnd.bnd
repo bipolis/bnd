@@ -7,14 +7,8 @@ Conditional-Package:                \
     aQute.libg.*;-split-package:=first
 
 -buildpath: \
-<<<<<<< HEAD
 	aQute.libg;version=project,\
 	biz.aQute.bndlib;version=latest,\
 	osgi.core;version=@6,\
-=======
-    aQute.libg;version=project, \
-	biz.aQute.bndlib;version=latest, \
-	osgi.core;version=@6, \
->>>>>>> 612e7fb370c93b3c72db8593ecdf086a8e5753a1
 	osgi.cmpn;version=@6,\
 	${junit}
