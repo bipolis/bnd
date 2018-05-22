@@ -107,11 +107,6 @@ public class SubsystemExporter implements Exporter {
 
 		List<File> files = getBundles(bundles, project);
 
-		MultiMap<String, Attrs> imports = new MultiMap<>();
-		MultiMap<String, Attrs> exports = new MultiMap<>();
-		MultiMap<String, Attrs> requireCapability = new MultiMap<>();
-		MultiMap<String, Attrs> provideCapability = new MultiMap<>();
-
 		for (File file : files) {
 			ContainerType containerType = ContainerType.byFile(file);
 
@@ -137,26 +132,28 @@ public class SubsystemExporter implements Exporter {
 
 			}
 			String version = domain.get(containerType.getVersionKey());
+			// may test if it really can exported or what nestes
+			// bundles/subsystems imports
 
-			for (Entry<String, Attrs> e : domain.getImportPackage()
-				.entrySet()) {
-				imports.add(e.getKey(), e.getValue());
-			}
-
-			for (Entry<String, Attrs> e : domain.getExportPackage()
-				.entrySet()) {
-				exports.add(e.getKey(), e.getValue());
-			}
-
-			for (Entry<String, Attrs> e : domain.getRequireCapability()
-				.entrySet()) {
-				requireCapability.add(e.getKey(), e.getValue());
-			}
-
-			for (Entry<String, Attrs> e : domain.getProvideCapability()
-				.entrySet()) {
-				provideCapability.add(e.getKey(), e.getValue());
-			}
+			// for (Entry<String, Attrs> e : domain.getImportPackage()
+			// .entrySet()) {
+			// imports.add(e.getKey(), e.getValue());
+			// }
+			//
+			// for (Entry<String, Attrs> e : domain.getExportPackage()
+			// .entrySet()) {
+			// exports.add(e.getKey(), e.getValue());
+			// }
+			//
+			// for (Entry<String, Attrs> e : domain.getRequireCapability()
+			// .entrySet()) {
+			// requireCapability.add(e.getKey(), e.getValue());
+			// }
+			//
+			// for (Entry<String, Attrs> e : domain.getProvideCapability()
+			// .entrySet()) {
+			// provideCapability.add(e.getKey(), e.getValue());
+			// }
 
 			if (storeBundles) {
 
@@ -169,39 +166,42 @@ public class SubsystemExporter implements Exporter {
 		// as overriding parameter from bndrun or bnd.bnd
 		// set imports exports requireCapability and provideCapability from
 		// embedded bundles
+
+		// require capability
+		MultiMap<String, Attrs> requireCapability = new MultiMap<>();
 		Parameters requirementParameter = project.getRequireCapability();
-		if (requirementParameter != null && !requirementParameter.isEmpty()) {
-			requireCapability.clear();
-			for (Entry<String, Attrs> e : requirementParameter.entrySet()) {
-				requireCapability.add(e.getKey(), e.getValue());
-			}
+		for (Entry<String, Attrs> e : requirementParameter.entrySet()) {
+			requireCapability.add(e.getKey(), e.getValue());
 		}
 		set(manifest.getMainAttributes(), org.osgi.framework.Constants.REQUIRE_CAPABILITY, requireCapability);
 
+		// provide capability
+		MultiMap<String, Attrs> provideCapability = new MultiMap<>();
 		Parameters capabilityParameter = project.getProvideCapability();
-		if (capabilityParameter != null && !capabilityParameter.isEmpty()) {
-			provideCapability.clear();
-			for (Entry<String, Attrs> e : capabilityParameter.entrySet()) {
-				provideCapability.add(e.getKey(), e.getValue());
-			}
+		for (Entry<String, Attrs> e : capabilityParameter.entrySet()) {
+			provideCapability.add(e.getKey(), e.getValue());
 		}
 		set(manifest.getMainAttributes(), org.osgi.framework.Constants.PROVIDE_CAPABILITY, provideCapability);
 
+		// imports
+		MultiMap<String, Attrs> imports = new MultiMap<>();
 		Parameters importParameter = project.getImportPackage();
-		if (importParameter != null && !importParameter.isEmpty()) {
-			if (type.equals(SubsystemConstants.SUBSYSTEM_TYPE_FEATURE)) {
-
-				throw new Exception("Modifying imports by using headers is not allowed for features");
-			}
+		if (type.equals(SubsystemConstants.SUBSYSTEM_TYPE_FEATURE)) {
+			throw new Exception("Modifying imports by using headers is not allowed for features");
 		} else {
+			for (Entry<String, Attrs> e : importParameter.entrySet()) {
+				imports.add(e.getKey(), e.getValue());
+			}
 			set(manifest.getMainAttributes(), org.osgi.framework.Constants.IMPORT_PACKAGE, imports);
 		}
 
+		// exports
+		MultiMap<String, Attrs> exports = new MultiMap<>();
 		Parameters exportParameter = project.getExportPackage();
-		if (exportParameter != null && !exportParameter.isEmpty()) {} else {
-
-			set(manifest.getMainAttributes(), org.osgi.framework.Constants.EXPORT_PACKAGE, exports);
+		for (Entry<String, Attrs> e : exportParameter.entrySet()) {
+			exports.add(e.getKey(), e.getValue());
 		}
+		set(manifest.getMainAttributes(), org.osgi.framework.Constants.EXPORT_PACKAGE, exports);
 
 		// set headers from bndrun if not set
 		headers(manifest.getMainAttributes(), project);
